@@ -1,0 +1,103 @@
+The history shows events: Docker failed to fetch data, Zabbix agent not available, battery discharging. But the alert is high CPU utilization. The history does not include CPU issues. Need to analyze current alert: high CPU utilization. Likely due to high load from processes. Ansible playbook should check CPU usage, maybe kill heavy processes, adjust services, restart Zabbix agent, adjust thresholds.
+
+We should run tasks: gather facts, check top processes, maybe stop/limit CPU hog processes, maybe scale services, maybe ensure Zabbix agent is running. Provide playbook to restart Zabbix agent service, kill process that uses >80% CPU, maybe use 'systemd' to restart 'zabbix-agent'. Also ensure Docker is running properly.
+
+Since history shows Zabbix agent not available event. So maybe the agent is down causing high CPU triggers incorrectly? But still we handle.
+
+Ansible playbook:
+
+- name: Mitigate high CPU on Z-XPS13
+  hosts: Z-XPS13
+  become: yes
+  tasks:
+  - name: Ensure zabbix-agent is running
+    service: name=zabbix-agent state=started enabled=yes
+  - name: Gather CPU usage statistics
+    shell: mpstat 1 1 | awk 'NR>2 {print $4+$6+$8+$10+$12+$14+$16+$18+$20+$22}'
+    register: cpu_percent
+  - name: Alert if CPU usage above threshold
+    debug: msg="CPU usage high: {{ cpu_percent.stdout }}%"
+  - name: Find top CPU consuming processes
+    shell: ps -eo pid,comm,pcpu --sort=-pcpu | head -5
+    register: top_cpu
+  - name: Kill CPU hog processes if above threshold
+    shell: |
+      for pid in $(ps -eo pid,pcpu --sort=-pcpu | awk 'NR>1 && $2>80 {print $1}'); do
+        kill -9 $pid
+      done
+    when: top_cpu.stdout.find('80') != -1
+  - name: Restart Docker service if failing
+    service: name=docker state=restarted enabled=yes
+  - name: Notify owner
+    mail: to="admin@example.com" subject="CPU mitigation applied on {{ inventory_hostname }}" body="CPU issues addressed. Check logs."
+
+But we should not include markdown, only YAML.
+
+Ensure playbook uses proper modules. Provide a proper playbook.
+
+Let's craft YAML.- name: Mitigate High CPU Utilization on Z-XPS13
+  hosts: Z-XPS13
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Ensure Zabbix Agent is running and enabled
+      service:
+        name: zabbix-agent
+        state: started
+        enabled: true
+
+    - name: Gather current CPU usage percentage
+      command: mpstat 1 1 | awk 'NR>2 {print $4+$6+$8+$10+$12+$14+$16+$18+$20+$22}'
+      register: cpu_usage_raw
+      changed_when: false
+
+    - name: Set CPU usage variable
+      set_fact:
+        cpu_usage: "{{ cpu_usage_raw.stdout | float }}"
+
+    - name: Log current CPU usage
+      debug:
+        msg: "Current CPU usage is {{ cpu_usage }}%"
+
+    - name: Identify top CPU consuming processes (top 5)
+      command: ps -eo pid,comm,pcpu --sort=-pcpu | head -6
+      register: top_processes
+      changed_when: false
+
+    - name: Log top CPU processes
+      debug:
+        msg: "{{ top_processes.stdout }}"
+
+    - name: Kill processes exceeding 80% CPU if any
+      shell: |
+        for pid in $(ps -eo pid,pcpu --sort=-pcpu | awk 'NR>1 && $2>80 {print $1}'); do
+          kill -9 $pid
+        done
+      when: top_processes.stdout_lines | select('search', '80') | list | length > 0
+      register: kill_output
+      ignore_errors: true
+
+    - name: Log killed processes
+      debug:
+        msg: "Killed processes: {{ kill_output.stdout }}"
+      when: kill_output is defined and kill_output.stdout != ""
+
+    - name: Restart Docker if not running or unresponsive
+      service:
+        name: docker
+        state: restarted
+        enabled: true
+
+    - name: Send notification email after mitigation
+      mail:
+        host: smtp.example.com
+        port: 25
+        from: alerts@example.com
+        to: admin@example.com
+        subject: "High CPU Mitigation Completed on {{ inventory_hostname }}"
+        body: |
+          CPU mitigation actions have been applied on host {{ inventory_hostname }}.
+          Current CPU usage: {{ cpu_usage }}%
+          Top processes before mitigation:
+          {{ top_processes.stdout }}
+          If CPU remains high, further investigation is required.
