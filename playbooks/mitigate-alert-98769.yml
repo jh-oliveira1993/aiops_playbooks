@@ -1,0 +1,9 @@
+---
+- hosts: Z-EQR5
+  gather_facts: yes
+  tasks:
+    - name: Ensure W3SVC service is running
+      ansible.windows.win_service:
+        name: W3SVC
+        start_mode: auto
+        state: started
