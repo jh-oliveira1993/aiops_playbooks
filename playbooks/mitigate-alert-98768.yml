@@ -1,0 +1,8 @@
+---
+- hosts: Z-XPS13
+  become: yes
+  tasks:
+    - name: Ensure nginx is running
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
