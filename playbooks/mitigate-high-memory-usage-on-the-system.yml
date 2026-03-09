@@ -1,0 +1,20 @@
+---
+- name: Mitigate high memory usage on Windows host
+  hosts: Z-EQR5
+  gather_facts: no
+  tasks:
+    - name: Check current memory usage
+      win_shell: |
+        (Get-Counter '\Memory\% Committed Bytes In Use').CounterSamples[0].CookedValue
+      register: memory_usage
+
+    - name: Fail if memory usage exceeds 99%
+      fail:
+        msg: "Memory usage is above threshold, service restart needed."
+      when: memory_usage.stdout | float > 99
+
+    - name: Restart the web service to free memory
+      win_service:
+        name: web
+        state: restarted
+        start_mode: auto
