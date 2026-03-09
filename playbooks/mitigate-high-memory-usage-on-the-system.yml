@@ -1,0 +1,27 @@
+---
+- name: Mitigate high memory usage on Z-EQR5
+  hosts: Z-EQR5
+  gather_facts: true
+  tasks:
+    - name: Gather current memory usage
+      ansible.windows.win_shell: |
+        (Get-Counter '\Memory\Available Bytes').CounterSamples[0].CookedValue / 1GB
+      register: available_memory_gb
+
+    - name: Log available memory before mitigation
+      ansible.builtin.debug:
+        msg: "Available memory before mitigation: {{ available_memory_gb.stdout | float }} GB"
+
+    - name: Restart the web service to free memory
+      ansible.windows.win_service:
+        name: "{{ (hostvars[inventory_hostname]['tags'] | selectattr('tag', 'equalto', 'service') | map(attribute='value') | list)[0] | default('w3svc') }}"
+        state: restarted
+
+    - name: Verify memory usage after restart
+      ansible.windows.win_shell: |
+        (Get-Counter '\Memory\Available Bytes').CounterSamples[0].CookedValue / 1GB
+      register: post_restart_memory_gb
+
+    - name: Log available memory after mitigation
+      ansible.builtin.debug:
+        msg: "Available memory after mitigation: {{ post_restart_memory_gb.stdout | float }} GB"
