@@ -1,0 +1,46 @@
+---
+- name: Mitigate high CPU utilization on Z-XPS13
+  hosts: Z-XPS13
+  become: true
+  tasks:
+    - name: Gather top CPU processes
+      shell: "ps -eo pid,comm,%cpu --sort=-%cpu | head -n 6"
+      register: cpu_top
+
+    - name: Debug CPU top processes
+      debug:
+        var: cpu_top.stdout_lines
+
+    - name: Identify processes exceeding 80% CPU
+      shell: "ps -eo pid,comm,%cpu --sort=-%cpu | awk '$3>80 {print $1}'"
+      register: high_cpu_pids
+
+    - name: Kill processes with >80% CPU
+      shell: "kill -9 {{ item }}"
+      loop: "{{ high_cpu_pids.stdout_lines }}"
+      when: high_cpu_pids.stdout_lines | length > 0
+
+    - name: Restart nginx if running
+      service:
+        name: nginx
+        state: restarted
+      when: "'nginx' in ansible_facts.services and ansible_facts.services['nginx']['state'] == 'running'"
+
+    - name: Create high CPU watchdog script
+      copy:
+        dest: /usr/local/bin/kill_high_cpu.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          pids=$(ps -eo pid,comm,%cpu --sort=-%cpu | awk '$3>80 {print $1}')
+          if [ -n "$pids" ]; then
+            echo "Killing high CPU processes: $pids" >> /var/log/high_cpu_watchdog.log
+            kill -9 $pids
+          fi
+
+    - name: Add cron job for watchdog
+      cron:
+        name: "High CPU watchdog"
+        user: root
+        minute: "*/5"
+        job: "/usr/local/bin/kill_high_cpu.sh"
