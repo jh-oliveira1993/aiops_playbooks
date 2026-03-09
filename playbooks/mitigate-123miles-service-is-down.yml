@@ -1,0 +1,10 @@
+---
+- name: Restart 123miles service on Windows host
+  hosts: Z-EQR5
+  gather_facts: false
+  tasks:
+    - name: Ensure 123miles service is started
+      ansible.windows.win_service:
+        name: 123miles
+        state: started
+        start_mode: auto
