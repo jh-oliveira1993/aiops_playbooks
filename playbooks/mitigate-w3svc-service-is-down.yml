@@ -1,0 +1,4 @@
+---
+- name: Verify service status
+  ansible.windows.win_service_info:
+    name: W3SVC
