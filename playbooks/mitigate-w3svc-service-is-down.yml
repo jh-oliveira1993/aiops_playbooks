@@ -1,0 +1,11 @@
+- name: Ensure W3SVC service is started
+      ansible.windows.win_service:
+        name: W3SVC
+        state: started
+        start_mode: auto
+      register: service_result
+
+    - name: Log service restart status
+      ansible.windows.win_shell: |
+        Write-Host "W3SVC service restart status: {{ service_result.changed }}"
+      when: service_result.changed is defined
