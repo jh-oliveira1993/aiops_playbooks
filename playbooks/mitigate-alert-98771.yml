@@ -1,0 +1,27 @@
+We need to produce a playbook for Windows OS. The alert is W3SVC service is down. Tags show service: web. Need to restart the IIS W3SVC service. Use ansible.windows.win_service. Provide playbook that checks service status and restarts if needed.
+
+Check tags: os=windows, service=web. Good.
+
+No existing playbook. So we output a new YAML playbook. Use only windows modules: ansible.windows.win_service, maybe win_reboot if needed. Just restart service.
+
+Also we might want to check service state, but ansible can set state restarted. Provide tasks: gather facts, restart service. Use win_service.
+
+YAML format only, no markdown.- name: Ensure IIS W3SVC service is running
+  hosts: Z-EQR5
+  gather_facts: no
+  tasks:
+    - name: Restart W3SVC if stopped
+      ansible.windows.win_service:
+        name: W3SVC
+        state: started
+      register: w3svc_service
+
+    - name: Verify service status
+      ansible.windows.win_shell: |
+        Get-Service -Name W3SVC | Select-Object Status
+      register: service_status
+
+    - name: Fail if service did not start
+      ansible.builtin.fail:
+        msg: "W3SVC failed to start: {{ service_status.stdout }}"
+      when: service_status.stdout | regex_search('^Stopped$') or w3svc_service.failed
