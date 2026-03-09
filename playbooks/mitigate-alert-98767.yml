@@ -1,0 +1,8 @@
+---
+- name: Acknowledge battery full event on Z-XPS13
+  community.zabbix.zabbix_event:
+    host: Z-XPS13
+    eventid: 7364418
+    action: acknowledge
+    comment: "Acknowledged as false positive, battery full is expected."
+    severity: 4
