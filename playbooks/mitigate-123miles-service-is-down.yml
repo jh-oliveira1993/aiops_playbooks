@@ -1,0 +1,57 @@
+---
+- name: Restart 123miles service
+  ansible.windows.win_service:
+    name: "123miles" (or "web")? I'll use "123miles".
+    state: started
+    start_mode: auto
+    restart: yes
+
+Also we might want to ensure it is running.
+
+Add hosts: Z-EQR5, gather_facts: no.
+
+Check windows environment: use ansible.windows.win_service.
+
+We must ensure to use only windows modules.
+
+Also need to check that playbook is not chronic; we already confirmed not chronic.
+
+So produce YAML.
+
+Let's produce:
+
+- hosts: Z-EQR5
+  gather_facts: no
+  tasks:
+    - name: Restart 123miles service
+      ansible.windows.win_service:
+        name: 123miles
+        state: started
+        start_mode: auto
+
+Also maybe check service status.
+
+But the trigger: "123miles service is down" indicates we want to start it.
+
+Ok.
+
+Let's produce YAML.- hosts: Z-EQR5
+  gather_facts: no
+  tasks:
+    - name: Ensure 123miles service is running
+      ansible.windows.win_service:
+        name: 123miles
+        state: started
+        start_mode: auto
+        restart: true
+        timeout: 30s
+
+    - name: Verify 123miles service status
+      ansible.windows.win_service_info:
+        name: 123miles
+      register: service_status
+
+    - name: Fail if service is not running after restart
+      fail:
+        msg: "123miles service failed to start on host {{ inventory_hostname }}"
+      when: service_status.services[0].state != 'Running'
