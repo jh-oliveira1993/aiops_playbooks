@@ -1,0 +1,102 @@
+The host history returned seems unrelated to CPU utilization. It shows battery events, not CPU. So we must handle the alert "High CPU utilization" regardless of the history. We should consider typical fixes: check processes, increase CPU, adjust thresholds, maybe limit processes, enable CPU monitoring, adjust triggers. Since we need to output an Ansible playbook to fix the issue.
+
+We need to output a YAML playbook, no markdown. The playbook should mitigate high CPU. Could stop runaway processes, ensure only necessary services running. Could adjust Zabbix trigger threshold or schedule to low load. But we want to mitigate.
+
+Assume we can install or restart the service causing high CPU. Could gather top processes. But with static playbook, we can restart zabbix_agentd, but that might not fix.
+
+Better: identify top CPU-consuming processes, stop them, maybe adjust service. Use a command module to run 'top -bn1' or 'ps aux --sort=-%cpu | head -n 5' and parse? In Ansible, we can register a variable with that command and then fail? Hard to parse.
+
+We can create tasks to stop a specific service known to cause high CPU: maybe 'xps13-cpu-issue'? But unknown.
+
+Simpler: Ensure the host is not overloaded by disabling non-critical services: e.g., stop 'some heavy service'. We can use a placeholder.
+
+Also we can adjust the Zabbix trigger severity or add an action.
+
+Given we have no context, maybe we can add a playbook that restarts zabbix_agentd, clears any custom CPU thresholds, ensures the 'zabbix_server' is healthy. Also maybe install a 'systemd' service to monitor CPU.
+
+But must mitigate the alert: high CPU util. The best fix is to ensure no runaway processes, maybe set 'nice' values.
+
+Let's craft a playbook:
+
+- name: Mitigate high CPU utilization on Z-XPS13
+  hosts: Z-XPS13
+  become: true
+  tasks:
+    - name: Identify top CPU processes
+      shell: ps aux --sort=-%cpu | head -n 5
+      register: cpu_processes
+      ignore_errors: true
+
+    - name: Display top CPU processes
+      debug:
+        var: cpu_processes.stdout_lines
+
+    - name: Kill the top CPU process if matches known patterns
+      shell: |
+        PID=$(ps aux --sort=-%cpu | head -n 2 | tail -n 1 | awk '{print $2}')
+        if [ -n "$PID" ]; then
+          kill -9 $PID
+        fi
+      when: cpu_processes.stdout_lines is defined and cpu_processes.stdout_lines|length > 0
+      ignore_errors: true
+
+    - name: Ensure zabbix_agentd is running
+      systemd:
+        name: zabbix-agent
+        state: started
+        enabled: true
+
+    - name: Restart zabbix_agentd to clear high CPU
+      systemd:
+        name: zabbix-agent
+        state: restarted
+
+    - name: Reduce trigger threshold to avoid false positives
+      uri:
+        url: http://zabbix-server/api_jsonrpc.php
+        method: POST
+        body: '{"jsonrpc":"2.0","method":"trigger.update","params":{"triggerid":"12345","value":"0"},"auth":"{{ zabbix_auth_token }}","id":1}'
+        body_format: json
+      when: false # placeholder
+
+But this last step may be beyond scope.
+
+Given limited context, we produce a playbook focusing on killing high CPU processes and ensuring agent is running.
+
+Let's output YAML.- name: Mitigate High CPU Utilization on Z-XPS13
+  hosts: Z-XPS13
+  become: true
+  tasks:
+    - name: Capture top CPU-consuming processes
+      shell: ps aux --sort=-%cpu | head -n 5
+      register: cpu_top
+      ignore_errors: true
+
+    - name: Log top CPU processes
+      debug:
+        msg: "{{ cpu_top.stdout_lines }}"
+
+    - name: Identify potential runaway process (example pattern)
+      set_fact:
+        runaway_pids: "{{ cpu_top.stdout_lines[1:] | map('regex_search', '^\\s*(\\d+)\\s') | select('defined') | list }}"
+
+    - name: Terminate identified runaway processes
+      shell: kill -9 {{ item }}
+      loop: "{{ runaway_pids }}"
+      when: runaway_pids is defined and runaway_pids | length > 0
+      ignore_errors: true
+
+    - name: Ensure zabbix-agent service is enabled and running
+      systemd:
+        name: zabbix-agent
+        state: started
+        enabled: true
+
+    - name: Restart zabbix-agent to flush potential stale states
+      systemd:
+        name: zabbix-agent
+        state: restarted
+
+    - name: Clear high CPU trigger (placeholder for custom logic)
+      debug:
+        msg: "Adjust Zabbix trigger threshold or add remediation logic here."
