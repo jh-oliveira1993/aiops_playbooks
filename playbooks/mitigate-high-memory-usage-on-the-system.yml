@@ -1,0 +1,9 @@
+---
+- name: Mitigate high memory usage on Windows host
+  hosts: Z-EQR5
+  gather_facts: no
+  tasks:
+    - name: Restart web service to alleviate memory pressure
+      ansible.windows.win_service:
+        name: web
+        state: restarted
