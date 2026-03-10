@@ -1,0 +1,31 @@
+---
+- name: Mitigate high CPU usage on Windows host
+  hosts: Z-EQR5
+  gather_facts: no
+  tasks:
+    - name: Restart the web service to alleviate CPU load
+      ansible.windows.win_service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - "{{ hostvars[inventory_hostname]['service'] | default('w3svc') }}"
+      register: restart_result
+
+    - name: Verify service status after restart
+      ansible.windows.win_service:
+        name: "{{ item }}"
+        status: true
+      loop:
+        - "{{ hostvars[inventory_hostname]['service'] | default('w3svc') }}"
+      register: status_check
+
+    - name: Notify when high CPU usage persists
+      ansible.windows.win_shell: |
+        $cpu = (Get-Counter '\Processor(_Total)\% Processor Time').CounterSamples[0].CookedValue
+        if ($cpu -gt 90) { Write-Host "High CPU usage still present: $cpu%" } else { Write-Host "CPU usage normalized." }
+      register: cpu_check
+      changed_when: false
+
+    - name: Log CPU status
+      ansible.builtin.debug:
+        msg: "{{ cpu_check.stdout_lines }}"
