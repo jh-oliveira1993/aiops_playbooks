@@ -1,0 +1,16 @@
+---
+- name: Mitigate high CPU usage on Windows host Z-EQR5
+  hosts: Z-EQR5
+  gather_facts: no
+  tasks:
+    - name: Restart the web service to reduce CPU load
+      ansible.windows.win_service:
+        name: web
+        state: restarted
+      register: service_restart
+
+    - name: Verify service status after restart
+      ansible.windows.win_service:
+        name: web
+        state: started
+      when: service_restart is succeeded
