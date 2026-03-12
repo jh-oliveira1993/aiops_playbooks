@@ -1,6 +1,7 @@
 ---
 - name: Ensure NGINX service is running on Windows host
   hosts: Z-EQR5
+  become: yes # <--- Added become: yes to elevate privileges
   gather_facts: no
   tasks:
     - name: Check NGINX service status
