@@ -1,0 +1,10 @@
+---
+- name: Recover NGINX service on Windows host
+  hosts: Z-EQR5
+  gather_facts: false
+  tasks:
+    - name: Ensure NGINX service is started
+      ansible.windows.win_service:
+        name: nginx
+        state: started
+        start_mode: auto
