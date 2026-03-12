@@ -7,18 +7,28 @@
       ansible.windows.win_service:
         name: nginx
       register: nginx_service
+      become: yes
+      become_method: runas
+      become_user: Administrator
 
     - name: Start NGINX service if stopped
       ansible.windows.win_service:
         name: nginx
         state: started
       when: nginx_service.exists and nginx_service.state == 'stopped'
+      become: yes
+      become_method: runas
+      become_user: Administrator
+      ignore_errors: true
 
     - name: Debug NGINX service status
       ansible.windows.win_shell: |
         Get-Service -Name nginx | Format-Table Name, Status
       register: service_status
       changed_when: false
+      become: yes
+      become_method: runas
+      become_user: Administrator
 
     - name: Show service status
       ansible.builtin.debug:
