@@ -1,12 +1,13 @@
 ---
 - name: Ensure NGINX service is running on Windows host
-  hosts: Z-EQR5
+  hosts: Z-XPS13
   gather_facts: no
   tasks:
     - name: Check NGINX service status
       ansible.windows.win_service:
         name: nginx
       register: nginx_service
+      ignore_errors: true
 
     - name: Start NGINX service if stopped
       ansible.windows.win_service:
