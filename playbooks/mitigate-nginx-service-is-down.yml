@@ -1,18 +1,13 @@
 ---
 - name: Ensure NGINX service is running on Windows host
   hosts: Z-EQR5
-  gather_facts: no
+  become: true  # privilege escalation to gain administrator privileges
   tasks:
     - name: Check NGINX service status
-      ansible.windows.win_service:
-        name: nginx
-      register: nginx_service
-
-    - name: Start NGINX service if stopped
-      ansible.windows.win_service:
+      ansible.windows.win_service_state:
         name: nginx
         state: started
-      when: nginx_service.exists and nginx_service.state == 'stopped'
+      register: nginx_service
 
     - name: Debug NGINX service status
       ansible.windows.win_shell: |
