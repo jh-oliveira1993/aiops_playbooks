@@ -1,25 +1,48 @@
 ---
-- name: Ensure NGINX service is running on Windows host
+- name: Ensure NGINX service is running
   hosts: Z-EQR5
-  gather_facts: no
+  gather_facts: yes
   tasks:
-    - name: Check NGINX service status
-      ansible.windows.win_service:
-        name: nginx
-      register: nginx_service
+    - block:
+        - name: Check NGINX service status
+          ansible.windows.win_service:
+            name: nginx
+          register: nginx_service
 
-    - name: Start NGINX service if stopped
-      ansible.windows.win_service:
-        name: nginx
-        state: started
-      when: nginx_service.exists and nginx_service.state == 'stopped'
+        - name: Start NGINX service if stopped
+          ansible.windows.win_service:
+            name: nginx
+            state: started
+          when: nginx_service.exists and nginx_service.state == 'stopped'
 
-    - name: Debug NGINX service status
-      ansible.windows.win_shell: |
-        Get-Service -Name nginx | Format-Table Name, Status
-      register: service_status
-      changed_when: false
+        - name: Debug NGINX service status
+          ansible.windows.win_shell: |
+            Get-Service -Name nginx | Format-Table Name, Status
+          register: service_status
+          changed_when: false
 
-    - name: Show service status
-      ansible.builtin.debug:
-        var: service_status.stdout
+        - name: Show service status
+          ansible.builtin.debug:
+            var: service_status.stdout
+      rescue:
+        - name: Handle failure on Windows
+          ansible.builtin.debug:
+            msg: "Failed to manage NGINX service on {{ inventory_hostname }}"
+
+    - name: Fallback for Linux hosts
+      when: ansible_os_family == 'Linux'
+      block:
+        - name: Check and start NGINX service
+          ansible.builtin.service:
+            name: nginx
+            state: started
+          become: true
+          register: linux_service
+
+        - name: Show Linux service status
+          ansible.builtin.debug:
+            var: linux_service
+      rescue:
+        - name: Handle failure on Linux
+          ansible.builtin.debug:
+            msg: "Failed to manage NGINX service on Linux host {{ inventory_hostname }}"
