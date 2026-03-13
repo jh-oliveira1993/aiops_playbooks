@@ -7,12 +7,15 @@
       ansible.windows.win_service:
         name: nginx
       register: nginx_service
+      ignore_errors: yes
 
     - name: Start NGINX service if stopped
       ansible.windows.win_service:
         name: nginx
         state: started
       when: nginx_service.exists and nginx_service.state == 'stopped'
+      delegate_to: localhost
+      become: true
 
     - name: Debug NGINX service status
       ansible.windows.win_shell: |
