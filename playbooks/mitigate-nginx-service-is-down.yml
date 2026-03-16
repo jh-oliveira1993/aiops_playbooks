@@ -2,6 +2,7 @@
 ---
 - name: Restart nginx service
   hosts: all
+  become: yes  # This will ask for sudo privileges
 
   tasks:
     - name: Restart nginx
