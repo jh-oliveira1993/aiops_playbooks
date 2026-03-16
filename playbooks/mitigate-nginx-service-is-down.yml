@@ -1,8 +1,14 @@
 ---
-json
-{
-  "name": "get_zabbix_host_history",
-  "parameters": {
-    "host": "Z-XPS13"
-  }
-}
+- name: get_zabbix_host_history
+  hosts: Z-XPS13
+  become: yes
+
+  tasks:
+  - name: Restart service
+    service:
+      name: <service_name>
+      state: restarted
+    ignore_errors: yes
+  - name: Display result
+    debug:
+      var: service_state
