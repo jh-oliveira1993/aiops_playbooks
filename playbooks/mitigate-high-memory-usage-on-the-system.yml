@@ -1,0 +1,15 @@
+---
+- hosts: all
+  tasks:
+  - name: Check if web service is running
+    ansible.builtin.service:
+      name: web
+      state: started
+  - name: Check if web service is enabled
+    ansible.builtin.service:
+      name: web
+      enabled: yes
+  - name: Restart web service
+    ansible.builtin.service:
+      name: web
+      state: restarted
