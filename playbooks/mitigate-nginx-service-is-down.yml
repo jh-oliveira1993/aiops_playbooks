@@ -13,6 +13,7 @@
         name: nginx
         state: started
       when: nginx_service.exists and nginx_service.state == 'stopped'
+      ignore_errors: yes
 
     - name: Debug NGINX service status
       ansible.windows.win_shell: |
