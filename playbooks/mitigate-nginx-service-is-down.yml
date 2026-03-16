@@ -1,0 +1,8 @@
+---
+json
+{
+  "name": "get_zabbix_host_history",
+  "parameters": {
+    "host": "Z-XPS13"
+  }
+}
