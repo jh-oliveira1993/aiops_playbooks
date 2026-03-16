@@ -1,8 +1,10 @@
 ---
-json
-{
-  "name": "get_zabbix_host_history",
-  "parameters": {
-    "host": "Z-XPS13"
-  }
-}
+---
+- name: Restart nginx service
+  hosts: all
+
+  tasks:
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
