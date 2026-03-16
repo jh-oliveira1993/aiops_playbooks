@@ -1,0 +1,15 @@
+---
+- hosts: Z-XPS13
+  tasks:
+  - name: Check memory usage
+    ansible.builtin.command: free -m
+    register: memory_usage
+  - name: Ensure memory usage is within limits
+    ansible.builtin.assert:
+      that: memory_usage.mem_available > 1024
+      success_msg: Memory usage is within limits
+      failure_msg: Memory usage is not within limits
+  - name: Restart web service
+    ansible.builtin.service:
+      name: web
+      state: restarted
