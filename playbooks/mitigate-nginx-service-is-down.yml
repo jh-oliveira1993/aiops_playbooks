@@ -1,7 +1,8 @@
 ---
----
 - name: Restart nginx service
   hosts: all
+  become: true
+  become_method: sudo
 
   tasks:
     - name: Restart nginx
