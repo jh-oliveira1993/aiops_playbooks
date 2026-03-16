@@ -1,0 +1,43 @@
+---
+- name: Mitigate high memory usage on Linux host
+  hosts: Z-XPS13
+  become: true
+  vars:
+    web_service_name: "apache2"   # adjust if the web service uses a different name (e.g., nginx, httpd)
+  tasks:
+    - name: Gather current memory usage
+      ansible.builtin.shell: free -m
+      register: memory_status
+      changed_when: false
+
+    - name: Log memory usage for reference
+      ansible.builtin.debug:
+        msg: "{{ memory_status.stdout_lines }}"
+
+    - name: Restart the web service to free memory
+      ansible.builtin.systemd:
+        name: "{{ web_service_name }}"
+        state: restarted
+        enabled: true
+
+    - name: Ensure swap is active (create swap file if missing)
+      ansible.builtin.shell: |
+        if ! swapon --show | grep -q '/swapfile'; then
+          fallocate -l 1G /swapfile
+          chmod 600 /swapfile
+          mkswap /swapfile
+          swapon /swapfile
+          echo '/swapfile none swap sw 0 0' >> /etc/fstab
+        fi
+      args:
+        executable: /bin/bash
+      when: ansible_memtotal_mb < 8000  # only add swap on smaller systems
+
+    - name: Verify swap is active
+      ansible.builtin.command: swapon --show
+      register: swap_info
+      changed_when: false
+
+    - name: Log swap status
+      ansible.builtin.debug:
+        msg: "{{ swap_info.stdout_lines }}"
