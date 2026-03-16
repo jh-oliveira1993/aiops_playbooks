@@ -1,10 +1,11 @@
 ---
 ---
 - name: Restart nginx service
-  hosts: all
+  hosts: Z-XPS13
 
   tasks:
     - name: Restart nginx
       ansible.builtin.service:
         name: nginx
         state: restarted
+      become: true
