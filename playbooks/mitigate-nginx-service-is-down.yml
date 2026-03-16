@@ -1,8 +1,20 @@
 ---
-json
-{
-  "name": "get_zabbix_host_history",
-  "parameters": {
-    "host": "Z-XPS13"
-  }
-}
+- name: Get Zabbix host history
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+  - name: Get Zabbix host history
+    uri:
+      url: 'http://localhost:80/api/history.json'
+      method: GET
+      body_format: json
+      headers:
+        Accept: application/json
+      return_content: yes
+    register: zabbix_history
+    become: true
+
+  - name: Debug Zabbix History
+    debug:
+      var: zabbix_history.content
