@@ -1,10 +1,16 @@
 ---
----
 - name: Restart nginx service
   hosts: all
+  become: true
+  become_method: sudo
 
   tasks:
-    - name: Restart nginx
-      ansible.builtin.service:
-        name: nginx
-        state: restarted
+    - block:
+        - name: Restart nginx
+          ansible.builtin.service:
+            name: nginx
+            state: restarted
+      rescue:
+        - name: Log nginx restart failure
+          ansible.builtin.debug:
+            msg: "Failed to restart nginx on {{ inventory_hostname }}."
