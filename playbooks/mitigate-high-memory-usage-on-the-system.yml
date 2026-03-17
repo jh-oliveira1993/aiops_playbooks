@@ -1,0 +1,25 @@
+---
+- name: Mitigate high memory usage on Linux host
+  hosts: Z-XPS13
+  become: true
+  vars:
+    web_service_name: nginx   # Adjust if the web service uses a different name
+    memory_threshold_percent: 80
+  tasks:
+    - name: Gather memory usage statistics
+      ansible.builtin.shell: |
+        free -b | awk '/Mem:/ {print $3/$2 * 100}'
+      register: mem_usage
+      changed_when: false
+
+    - name: Convert memory usage to integer percentage
+      ansible.builtin.set_fact:
+        mem_usage_percent: "{{ mem_usage.stdout | float | round(0, 'floor') }}"
+
+    - name: Restart web service when memory usage exceeds threshold
+      ansible.builtin.service:
+        name: "{{ web_service_name }}"
+        state: restarted
+      when: mem_usage_percent > memory_threshold_percent
+      vars:
+        ansible_python_interpreter: /usr/bin/python3
