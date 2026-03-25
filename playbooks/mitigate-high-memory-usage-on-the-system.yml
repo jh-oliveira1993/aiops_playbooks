@@ -1,0 +1,22 @@
+---
+- hosts: Z-XPS13
+  become: true
+  vars:
+    memory_threshold_percent: 80
+    service_name: web
+  tasks:
+    - name: Gather current memory usage percentage
+      ansible.builtin.shell: |
+        free | grep Mem | awk '{printf "%.2f", $3/$2 * 100}'
+      register: mem_usage
+      changed_when: false
+
+    - name: Set memory usage fact
+      ansible.builtin.set_fact:
+        mem_usage_percent: "{{ mem_usage.stdout | float }}"
+
+    - name: Restart web service when memory usage exceeds threshold
+      ansible.builtin.service:
+        name: "{{ service_name }}"
+        state: restarted
+      when: mem_usage_percent > memory_threshold_percent
