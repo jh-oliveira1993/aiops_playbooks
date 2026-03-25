@@ -1,7 +1,7 @@
 ---
----
 - name: Restart nginx service
   hosts: all
+  become: true
 
   tasks:
     - name: Restart nginx
