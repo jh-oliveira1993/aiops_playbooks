@@ -1,0 +1,35 @@
+---
+- name: Mitigate high memory usage on Linux host
+  hosts: Z-XPS13
+  become: true
+  vars:
+    # Service handling web traffic; adjust as needed for the environment
+    web_service_name: nginx
+    memory_threshold_percent: 80
+  tasks:
+    - name: Ensure required facts are gathered
+      ansible.builtin.setup:
+        gather_subset:
+          - hardware
+          - network
+
+    - name: Calculate memory usage percentage
+      ansible.builtin.set_fact:
+        mem_used_percent: "{{ ((ansible_facts.memtotal_mb - ansible_facts.memavailable_mb) / ansible_facts.memtotal_mb * 100) | round(0) }}"
+
+    - name: Debug memory usage
+      ansible.builtin.debug:
+        msg: "Memory usage is {{ mem_used_percent }}% (threshold = {{ memory_threshold_percent }}%)"
+
+    - name: Restart web service when memory usage exceeds threshold
+      ansible.builtin.service:
+        name: "{{ web_service_name }}"
+        state: restarted
+      when: mem_used_percent > memory_threshold_percent
+
+    - name: Drop caches to free memory when usage exceeds threshold
+      ansible.builtin.shell: |
+        echo 3 > /proc/sys/vm/drop_caches
+      args:
+        executable: /bin/bash
+      when: mem_used_percent > memory_threshold_percent
