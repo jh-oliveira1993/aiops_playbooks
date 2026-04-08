@@ -1,0 +1,48 @@
+---
+- name: Mitigate high memory usage on Linux web server
+  hosts: Z-XPS13
+  become: true
+  vars:
+    web_service_name: web
+  tasks:
+    - name: Gather memory facts
+      ansible.builtin.setup:
+        filter: ansible_memory*
+    
+    - name: Log current memory usage
+      ansible.builtin.debug:
+        msg: >
+          Total memory: {{ ansible_facts.ansible_memory_mb.total }} MB,
+          Free memory: {{ ansible_facts.ansible_memory_mb.free }} MB,
+          Used memory: {{ ansible_facts.ansible_memory_mb.used }} MB,
+          Available memory: {{ ansible_facts.ansible_memory_mb.available }} MB
+
+    - name: Restart web service to release memory
+      ansible.builtin.service:
+        name: "{{ web_service_name }}"
+        state: restarted
+
+    - name: Ensure swap is enabled (create 1G swap file if missing)
+      ansible.builtin.command: swapon --show
+      register: swap_check
+      changed_when: false
+
+    - name: Create swap file when no swap present
+      ansible.builtin.command: |
+        fallocate -l 1G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+      when: swap_check.stdout == ""
+    
+    - name: Make swap persistent across reboots
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        line: "/swapfile none swap sw 0 0"
+        state: present
+      when: swap_check.stdout == ""
+
+    - name: Verify memory after remediation
+      ansible.builtin.shell: free -m
+      register: post_mem
+
+    - name: Log post‑mitigation memory status
+      ansible.builtin.debug:
+        var: post_mem.stdout
